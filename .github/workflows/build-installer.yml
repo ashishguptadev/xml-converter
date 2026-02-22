@@ -22,7 +22,7 @@ jobs:
         run: choco install wixtoolset -y
 
       - name: Build JAR + runtime dependencies (Maven)
-        run: .\\mvnw.cmd -B clean package dependency:copy-dependencies -DincludeScope=runtime
+        run: mvn -B clean package dependency:copy-dependencies -DincludeScope=runtime
 
       - name: Build MSI with jpackage
         shell: pwsh
