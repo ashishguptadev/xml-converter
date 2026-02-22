@@ -2,7 +2,8 @@
 SETLOCAL
 
 SET "BASE_DIR=%~dp0"
-SET "WRAPPER_DIR=%BASE_DIR%.mvn\wrapper"
+IF "%BASE_DIR:~-1%"=="\" SET "BASE_DIR=%BASE_DIR:~0,-1%"
+SET "WRAPPER_DIR=%BASE_DIR%\.mvn\wrapper"
 SET "WRAPPER_JAR=%WRAPPER_DIR%\maven-wrapper.jar"
 SET "WRAPPER_PROPS=%WRAPPER_DIR%\maven-wrapper.properties"
 
