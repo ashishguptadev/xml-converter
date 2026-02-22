@@ -1,0 +1,69 @@
+name: Build Windows Installer (MSI)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-msi:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Install WiX Toolset (for MSI)
+        run: choco install wixtoolset -y
+
+      - name: Build JAR + runtime dependencies (Maven)
+        run: mvn -B clean package dependency:copy-dependencies -DincludeScope=runtime
+
+      - name: Build MSI with jpackage
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+
+          [xml]$pom = Get-Content pom.xml
+          $artifactId = [string]$pom.project.artifactId
+          $version = [string]$pom.project.version
+          $mainJarName = "$artifactId-$version.jar"
+          $mainJarPath = Join-Path "target" $mainJarName
+
+          if (-not (Test-Path $mainJarPath)) {
+            throw "Expected main JAR not found: $mainJarPath"
+          }
+
+          $runtimeInput = Join-Path "target" "installer-input"
+          New-Item -ItemType Directory -Force -Path $runtimeInput | Out-Null
+
+          Copy-Item -Path $mainJarPath -Destination $runtimeInput -Force
+
+          $depDir = Join-Path "target" "dependency"
+          if (Test-Path $depDir) {
+            Copy-Item -Path (Join-Path $depDir '*.jar') -Destination $runtimeInput -Force
+          }
+
+          jpackage `
+            --type msi `
+            --name RegexXmlCleaner `
+            --app-version $version `
+            --vendor "Sanjay Tools" `
+            --input $runtimeInput `
+            --main-jar $mainJarName `
+            --main-class com.sanjay.tools.RegexXmlCleanerApp `
+            --dest dist `
+            --win-menu `
+            --win-shortcut `
+            --win-dir-chooser
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RegexXmlCleaner-MSI
+          path: dist/*.msi
